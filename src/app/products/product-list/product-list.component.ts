@@ -18,6 +18,8 @@ export class ProductListComponent implements OnInit {
   title: string = 'Products';
   selectedProduct: Product;
   products$: Observable<Product[]>;
+  mostExpensiveProduct$: Observable<Product>;
+  productsNumber$: Observable<number>;
   errorMessage;
 
   // Pagination
@@ -25,6 +27,7 @@ export class ProductListComponent implements OnInit {
   start = 0;
   end = this.pageSize;
   currentPage = 1;
+  productsToLoad = this.pageSize * 2; // Pour pagination serveur
 
   previousPage() {
     this.start -= this.pageSize;
@@ -55,17 +58,41 @@ export class ProductListComponent implements OnInit {
     private router: Router) {
   }
 
+  loadMore() {
+    let take: number = this.productsToLoad;
+    let skip: number = this.end;
+
+    this.productService.initProducts(skip, take);
+  }
+
   ngOnInit(): void {
     // Self url navigation will refresh the page ('Refresh List' button)
     this.router.routeReuseStrategy.shouldReuseRoute = () => false;
 
+    // Liste des produits
     this.products$ = this
                       .productService
-                      .products$;
+                      .products$
+                      .pipe(
+                        filter(products => products.length > 0)
+                      );
+
+    // Nombre de produits
+    this.productsNumber$ = this
+                              .products$
+                              .pipe(
+                                map(products => products.length),
+                                startWith(0)
+                              );
+
+    // Produit le plus chere
+    this.mostExpensiveProduct$ = this
+                                    .productService
+                                    .mostExpensiveProduct$;
   }
 
   refresh() {
-    this.productService.initProducts();
+    this.productService.clearList();
     this.router.navigateByUrl('/products'); // Self route navigation
   }  
 }
